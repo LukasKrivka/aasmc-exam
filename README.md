@@ -10,6 +10,12 @@ Supporting hypothesis to be tested:
 - is the attribute "gender" significant as a predictor when explaining "income"
 
 Methods:
-- Linear Regression - to get the estimators of the predictors' coefficient
+- Logistic Regression - to get the estimators of the predictors' coefficient
 - t-Test - to test the significance of the coefficient (H0: coefficient = 0)
-- (PCA - to find out how much does "race" and "gender" contribute to the most significant dimensions)
+
+--------------------------------------------------------------------------------
+________________________________________________________________________________
+Another approach is to predict whether a person makes above 50K using logistic regression
+With all the features, there is an issue of (most likely) multicollinearity.
+We can use LASSO regression to address this and add chi-squared test or t-test for dependence between
+variables that are identified as insignificant by the constrained regression
