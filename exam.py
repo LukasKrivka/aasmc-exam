@@ -1,6 +1,7 @@
 import pandas as pd
 import statsmodels.formula.api as smf
-import statsmodels.discrete.discrete_model as sm
+# import statsmodels.discrete.discrete_model as sm
+import statsmodels.api as sm
 
 from statsmodels.tools.tools import add_constant
 from scipy.stats import chi2, kstest, kruskal, spearmanr
@@ -38,31 +39,36 @@ def kruskal_test(data: pd.DataFrame, att1: str, att2: str):
 
 if __name__ == '__main__':
 
-    df = pd.read_csv('data/adult.csv')
-    # df = df.sample(100)
-
-    """View dataset and exoplore different attributes and"""
-    # print(df.head(20))
+    """OLD DATASET"""
+    # df = pd.read_csv('data/adult.csv')
     #
-    # for c in df.columns:
-    #     print(c)
-    #     print(df[c].describe())
-    #     print('unique: {}'.format(df[c].unique()))
-    #     print()
+    # """preprocessing to fit into regression"""
+    # df.rename(columns={'hours.per.week': 'hours_per_week', 'capital.gain': 'capital_gain', 'capital.loss': 'capital_loss'}, inplace=True)
+    # df.replace(to_replace='Asian-Pac-Islander', value='Asian_Pac_Islander', inplace=True)
+    # df.replace(to_replace='Amer-Indian-Eskimo', value='Amer_Indian_Eskimo', inplace=True)
+    # df.drop(df[df['native.country'] == '?'].index, inplace=True)
+    # df.drop(df[df['occupation'] == '?'].index, inplace=True)
+    # df.drop(df[df['workclass'] == '?'].index, inplace=True)
+    # df['income_num'] = pd.Categorical(df['income']).codes
+    # # print(df.head(30))
+    #
+    # # testing independence of selected features
+    # categorical = ['sex', 'race', 'education', 'workclass', 'occupation']
+    # numeric = ['age', 'hours_per_week', 'capital_gain', 'capital_loss']
+    #
+    # X = df[['age', 'hours_per_week', 'capital_gain', 'capital_loss']]
+    # X = pd.concat([X, pd.get_dummies(df[['sex', 'education', 'occupation', 'race']])], axis=1)
+    # y = df['income_num']
+    # X = add_constant(X)
+    # model = sm.Logit(y, X)
+    # results = model.fit()
+    # print(results.summary())
 
-    """preprocessing to fit into regression"""
-    df.rename(columns={'hours.per.week': 'hours_per_week', 'capital.gain': 'capital_gain', 'capital.loss': 'capital_loss'}, inplace=True)
-    df.replace(to_replace='Asian-Pac-Islander', value='Asian_Pac_Islander', inplace=True)
-    df.replace(to_replace='Amer-Indian-Eskimo', value='Amer_Indian_Eskimo', inplace=True)
-    df.drop(df[df['native.country'] == '?'].index, inplace=True)
-    df.drop(df[df['occupation'] == '?'].index, inplace=True)
-    df.drop(df[df['workclass'] == '?'].index, inplace=True)
-    df['income_num'] = pd.Categorical(df['income']).codes
-    # print(df.head(30))
+    df = pd.read_csv('data/folktables_data/CA_w_few_cols.csv')
 
     # testing independence of selected features
-    categorical = ['sex', 'race', 'education', 'workclass', 'occupation']
-    numeric = ['age', 'hours_per_week', 'capital_gain', 'capital_loss']
+    categorical = ['SEX', 'RAC1P', 'SCHL', 'COW', 'OCCP', 'MAR', 'POBP', 'RELSHIPP', 'ESR', 'WAOB', 'MSP', 'CIT']
+    numeric = ['AGEP', 'WKHP', 'INTP']
 
     # testing normality of numeric features to determine whether to use parametric or non-parametric test for independence
     for i in numeric:
@@ -97,26 +103,14 @@ if __name__ == '__main__':
 
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
-    print(independence_df)
+    # print(independence_df)
 
-    """obtaining regression results
-    Other formula strings are there only for debugging multicollinearity"""
-    # formula_str = 'income_num ~ age + sex + hours_per_week + workclass + race + occupation + race'
-    # formula_str = 'income_num ~ sex + hours_per_week + race + workclass + occupation + education'
-    # formula_str = 'income_num ~ education + age + sex'
-    # formula_str = 'income_num ~ age + sex + hours_per_week + workclass + education + capital_gain + capital_loss'# + occupation + race'
-    # results = smf.logit(formula=formula_str, data=df).fit()
-    # print(results.summary())
-
-    X = df[['age', 'hours_per_week', 'capital_gain', 'capital_loss']]
-    X = pd.concat([X, pd.get_dummies(df[['sex', 'education', 'occupation', 'race']])], axis=1)
-    y = df['income_num']
+    """obtaining regression results"""
+    X = df[numeric]
+    X = pd.concat([X, pd.get_dummies(df[categorical].drop(columns=['OCCP', 'POBP']).astype(str))], axis=1)
+    # the R^2 including all is 0.465, excluding OCCP 0.398, excluding POBP 0.462, excluding both 0.391
+    y = df['PINCP'] / 1000
     X = add_constant(X)
-    model = sm.Logit(y, X)
+    model = sm.OLS(y, X)
     results = model.fit()
     print(results.summary())
-
-    # import statsmodels.genmod.generalized_linear_model as sm
-    # model = sm.GLM(y, X, family=sm.families.Binomial(link=sm.families.links.Logit()))
-    # results = model.fit()
-    # print(results.summary())
