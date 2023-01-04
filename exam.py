@@ -79,22 +79,41 @@ relshipp = {20: "Reference person", 21: "Opposite-sex husband/wife/spouse", 22: 
             33: "Other relative", 34: "Roommate or housemate", 35: "Foster child", 36: "Other nonrelative",
             37: "Institutionalized group quarters population", 38: "Noninstitutionalized group quarters population"}
 
-encoding = {'SEX': sex, 'RAC1P': race, 'SCHL': schl, 'COW': cow, 'MAR': mar, 'RELSHIPP': relshipp, 'WAOB': waob, 'CIT': cit}
+occp = {'MGR': "Management Occupations", 'BUS': "Business Occupations", 'FIN': "Financial Operations Occupations",
+        'CMM': "Computer and Mathematical Occupations", 'ENG': "Architecture and Engineering Occupations",
+        'SCI': "Life, Physical, and Social Science Occupations", 'CMS': "Community and Social Service Occupations",
+        'LGL': "Legal Occupations", 'EDU': "Educational Instruction and Library Occupations",
+        'ENT': "Arts, Design, Entertainment, Sports, and Media Occupations",
+        'MED': "Healthcare Practitioners and Technical Occupations",
+        'HLS': "Healthcare Support Occupations", 'PRT': "Protective Service Occupations",
+        'EAT': "Food Preparation and Serving Related Occupations",
+        'CLN': "Building and Grounds Cleaning and Maintenance Occupations",
+        'PRS': "Personal Care and Service Occupations", 'SAL': "Sales and Related Occupations",
+        'OFF': "Office and Administrative Support Occupations", 'FFF': "Farming, Fishing, and Forestry Occupations",
+        'CON': "Construction Occupations", 'EXT': "Extraction Occupations",
+        'RPR': "Installation, Maintenance, and Repair Occupations", 'PRD': "Production Occupations",
+        'TRN': "Transportation and Material Moving Occupations", 'MIL': "Military Specific Occupations",
+        'UEP': "Unemployed, With No Work Experience In The Last 5 Years Or Earlier Or Never Worked"}
+
+encoding = {'SEX': sex, 'RAC1P': race, 'SCHL': schl, 'COW': cow, 'MAR': mar, 'RELSHIPP': relshipp, 'WAOB': waob, 'CIT': cit, 'OCCP': occp}
 
 if __name__ == '__main__':
 
-    df = pd.read_csv('data/folktables_data/CA_w_few_cols.csv')
+    df = pd.read_csv('data/folktables_data/CA_new.csv')
     for k, v in encoding.items():
         df[k] = df[k].map(v)
     df.rename(columns={'RAC1P': 'RACE', 'AGEP': 'AGE', 'SCHL': 'EDUCATION', 'MAR': 'FAMILY_STATUS',
                        'CIT': 'CITIZENSHIP', 'COW': 'WORKCLASS', 'RELSHIPP': 'RELATIONSHIP',
                        'WAOB': 'BIRTH_PLACE', 'WKHP': 'WORK_HOURS', 'INTP': 'CAPITAL_TAX',
-                       'PINCP': 'INCOME'}, inplace=True)
+                       'OCCP': 'OCCUPATION', 'PINCP': 'INCOME'}, inplace=True)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    # print(df.head(30))
 
     # testing independence of selected features
     # categorical = ['SEX', 'RAC1P', 'SCHL', 'COW', 'OCCP', 'MAR', 'POBP', 'RELSHIPP', 'ESR', 'WAOB', 'MSP', 'CIT']
     # numeric = ['AGEP', 'WKHP', 'INTP']
-    categorical = ['SEX', 'RACE', 'EDUCATION', 'WORKCLASS', 'FAMILY_STATUS', 'OCCP', 
+    categorical = ['SEX', 'RACE', 'EDUCATION', 'WORKCLASS', 'FAMILY_STATUS', 'OCCUPATION',
                    'RELATIONSHIP', 'BIRTH_PLACE', 'CITIZENSHIP']
     numeric = ['AGE', 'WORK_HOURS', 'CAPITAL_TAX']
 
@@ -147,8 +166,6 @@ if __name__ == '__main__':
     num_p.fillna('-', inplace=True)
     corr_df.fillna(1, inplace=True)
 
-    pd.set_option('display.max_rows', None)
-    pd.set_option('display.max_columns', None)
     # print(independence_df.to_latex())
     print(cat_p.to_latex())
     print(num_p.to_latex())
