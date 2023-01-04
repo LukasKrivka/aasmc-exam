@@ -3,11 +3,9 @@ import numpy as np
 import statsmodels.formula.api as smf
 # import statsmodels.discrete.discrete_model as sm
 import statsmodels.api as sm
-import statsmodels.graphics.regressionplots as plots
 import matplotlib.pyplot as plt
 
 from scipy.stats import chi2, norm, kstest, kruskal, spearmanr
-from statsmodels.tsa.statespace.mlemodel import MLEModel
 from statsmodels.tools.tools import add_constant
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from statsmodels.stats.diagnostic import het_breuschpagan
@@ -85,31 +83,6 @@ encoding = {'SEX': sex, 'RAC1P': race, 'SCHL': schl, 'COW': cow, 'MAR': mar, 'RE
 
 if __name__ == '__main__':
 
-    """OLD DATASET"""
-    # df = pd.read_csv('data/adult.csv')
-    #
-    # """preprocessing to fit into regression"""
-    # df.rename(columns={'hours.per.week': 'hours_per_week', 'capital.gain': 'capital_gain', 'capital.loss': 'capital_loss'}, inplace=True)
-    # df.replace(to_replace='Asian-Pac-Islander', value='Asian_Pac_Islander', inplace=True)
-    # df.replace(to_replace='Amer-Indian-Eskimo', value='Amer_Indian_Eskimo', inplace=True)
-    # df.drop(df[df['native.country'] == '?'].index, inplace=True)
-    # df.drop(df[df['occupation'] == '?'].index, inplace=True)
-    # df.drop(df[df['workclass'] == '?'].index, inplace=True)
-    # df['income_num'] = pd.Categorical(df['income']).codes
-    # # print(df.head(30))
-    #
-    # # testing independence of selected features
-    # categorical = ['sex', 'race', 'education', 'workclass', 'occupation']
-    # numeric = ['age', 'hours_per_week', 'capital_gain', 'capital_loss']
-    #
-    # X = df[['age', 'hours_per_week', 'capital_gain', 'capital_loss']]
-    # X = pd.concat([X, pd.get_dummies(df[['sex', 'education', 'occupation', 'race']])], axis=1)
-    # y = df['income_num']
-    # X = add_constant(X)
-    # model = sm.Logit(y, X)
-    # results = model.fit()
-    # print(results.summary())
-
     df = pd.read_csv('data/folktables_data/CA_w_few_cols.csv')
     for k, v in encoding.items():
         df[k] = df[k].map(v)
@@ -121,7 +94,7 @@ if __name__ == '__main__':
     # testing independence of selected features
     # categorical = ['SEX', 'RAC1P', 'SCHL', 'COW', 'OCCP', 'MAR', 'POBP', 'RELSHIPP', 'ESR', 'WAOB', 'MSP', 'CIT']
     # numeric = ['AGEP', 'WKHP', 'INTP']
-    categorical = ['SEX', 'RACE', 'EDUCATION', 'WORKCLASS', 'FAMILY_STATUS',
+    categorical = ['SEX', 'RACE', 'EDUCATION', 'WORKCLASS', 'FAMILY_STATUS', 'OCCP', 
                    'RELATIONSHIP', 'BIRTH_PLACE', 'CITIZENSHIP']
     numeric = ['AGE', 'WORK_HOURS', 'CAPITAL_TAX']
 
@@ -130,6 +103,7 @@ if __name__ == '__main__':
         stat, p_value = kstest(df[i], 'norm')
         print('p-value for normality of {}: {}'.format(i, p_value))
 
+    # create matrix for p-values for dependence tests, independence_df captures all features, for the report, individual df are made for different data types
     features = categorical+numeric
     independence_df = pd.DataFrame(index=features, columns=features)
     for i in features:
@@ -176,66 +150,83 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
     # print(independence_df.to_latex())
-    # print(cat_p.to_latex())
-    # print(num_p.to_latex())
-    # print(mix_p.to_latex())
-    # print(corr_df.to_latex())
+    print(cat_p.to_latex())
+    print(num_p.to_latex())
+    print(mix_p.to_latex())
+    print(corr_df.to_latex())
 
-    # TODO: standardizaiton of values, explore residuals, check homoskedascity and nedogenity
-    """obtaining regression results"""
+    # TODO: REGRESSION (todo is made for highlighting)
+    """obtaining regression results
+    Using k-1 dummy variables and centered and standerdized numeric features"""
     X = (df[numeric] - df[numeric].mean()) / df[numeric].std()
-    X = pd.concat([X, pd.get_dummies(df[categorical].drop(columns=['WORKCLASS']))], axis=1)
+    X = pd.concat([X, pd.get_dummies(df[categorical].drop(columns=['WORKCLASS']))], axis=1) # , 'RELATIONSHIP', 'BIRTH_PLACE'
     # the R^2 including all is 0.465, excluding OCCP 0.398, excluding POBP 0.462, excluding both 0.386,, + excluding WORKCLASS 0.378 (with HC1)
+    print(df['INCOME'].describe())
     y = np.log(df['INCOME'])
     y = (y - y.mean()) / y.std()
-    print(y.min())
     X = add_constant(X)
-    X.drop(columns=['SEX_Male', 'RACE_White', 'EDUCATION_No schooling completed',# 'WORKCLASS_Without Pay',
-                    'FAMILY_STATUS_Never Maried', 'RELATIONSHIP_Biological son or daughter',
-                    'BIRTH_PLACE_US state', 'CITIZENSHIP_Born in US'], inplace=True)
-    # Dropping categorical dummies manually, for better interpretation of results (compared to the base case that is droped - like compared to white male)
-    # model = MLEModel(endog=y, k_states=1, exog=X)
-    # results = model.fit()
+    # Dropping categorical dummies manually, for better interpretation of results (compared to the base case that is droped)
+    X.drop(columns=['SEX_Male', 'RACE_White', 'BIRTH_PLACE_US state', 'RELATIONSHIP_Biological son or daughter',# 'WORKCLASS_Without Pay',
+                    'FAMILY_STATUS_Never Maried', 'EDUCATION_No schooling completed', 'CITIZENSHIP_Born in US'], inplace=True)
     model = sm.OLS(y, X)
-    results = model.fit(cov_type='HC1')
+    results = model.fit(cov_type='HC2')
     print(results.summary())
 
-    plt.hist(df['INCOME'])
-    plt.show()
-    plt.hist(y)
-    plt.show()
-
-    plt.scatter(y, results.resid, alpha=0.5)
-    plt.xlabel('Y')
-    plt.ylabel('Residuals')
-    plt.show()
-    plt.scatter(X['AGE'], results.resid, alpha=0.5)
-    plt.xlabel('AGE')
-    plt.ylabel('Residuals')
-    plt.show()
-    plt.scatter(X['WORK_HOURS'], results.resid, alpha=0.5)
-    plt.xlabel('WORK_HOURS')
-    plt.ylabel('Residuals')
-    plt.show()
-    plt.scatter(X['CAPITAL_TAX'], results.resid, alpha=0.5)
-    plt.xlabel('CAPITAL_TAX')
-    plt.ylabel('Residuals')
-    plt.show()
-    # testing normality of residuals:
-    stat, p_value = kstest(results.resid, 'norm')
-    print('p-value for normality of {}: {}'.format('residuals', p_value))
-    #testing VIF:
-    vif_data = pd.DataFrame()
-    vif_data["Regressors"] = X.columns
-    vif_data["VIF"] = [variance_inflation_factor(X.values, i)
-                       for i in range(len(X.columns))]
-    print(vif_data)
-    # testing homoskedasticity:
-    bp_test = het_breuschpagan(results.resid, X)
-    print('Breusch-Pangan test:')
-    print('LM-test p-value:', bp_test[1])
-    print('F-test p-value:', bp_test[3])
-
-    # result_summary = results.summary().tables[1]
-    # result_summary = pd.DataFrame(result_summary)
-    # print(result_summary)
+    # plotting income to make the point that log transformation makes it more like normally distributed
+    # plt.hist(df['INCOME'])
+    # plt.show()
+    # plt.hist(y)
+    # plt.show()
+    #
+    # plotting the residuals against y and predictors for the report (testing homoskedasticity and endogenity)
+    # plt.scatter(y, results.resid, alpha=0.3)
+    # plt.xlabel('Y')
+    # plt.ylabel('Residuals')
+    # plt.savefig('Residuals_INCOME')
+    # plt.show()
+    # plt.scatter(X['AGE'], results.resid, alpha=0.3)
+    # plt.xlabel('AGE')
+    # plt.ylabel('Residuals')
+    # plt.savefig('Residuals_AGE')
+    # plt.show()
+    # plt.scatter(X['WORK_HOURS'], results.resid, alpha=0.3)
+    # plt.xlabel('WORK_HOURS')
+    # plt.ylabel('Residuals')
+    # plt.savefig('Residuals_WORK_HOURS')
+    # plt.show()
+    # plt.scatter(X['CAPITAL_TAX'], results.resid, alpha=0.3)
+    # plt.xlabel('CAPITAL_TAX')
+    # plt.ylabel('Residuals')
+    # plt.savefig('Residuals_CAPITAL_TAX')
+    # plt.show()
+    #
+    # # testing normality of residuals:
+    # stat, p_value = kstest(results.resid, 'norm')
+    # print('p-value for normality of {}: {}'.format('residuals', p_value))
+    #
+    # # testing VIF:
+    # vif_data = pd.DataFrame()
+    # vif_data["Regressors"] = X.columns
+    # vif_data["VIF"] = [variance_inflation_factor(X.values, i)
+    #                    for i in range(len(X.columns))]
+    # print(vif_data)
+    #
+    # # testing homoskedasticity:
+    # bp_test = het_breuschpagan(results.resid, X)
+    # print('Breusch-Pangan test:')
+    # print('LM-test p-value:', bp_test[1])
+    # print('F-test p-value:', bp_test[3])
+    #
+    # # getting insignificant attributes for report
+    result_summary = results.summary().tables[1].data
+    result_summary = pd.DataFrame(result_summary, columns=['Predictor', 'coef', 'std err', 't', 'p-value', 'Conf.',  'Int.'])
+    result_summary.set_index(result_summary.iloc[:, 0], inplace=True, drop=True)
+    result_summary = result_summary.iloc[1:, [1, 2, 4]]
+    result_summary['p-value'] = pd.to_numeric(result_summary['p-value'])
+    print('insignificant coefficients')
+    print(result_summary[result_summary['p-value'] > 0.05].to_latex())
+    result_summary = result_summary[result_summary['p-value'] < 0.05]
+    result_summary['coef'] = pd.to_numeric(result_summary['coef'])
+    result_summary['coef_abs'] = result_summary['coef'].abs()
+    print('top 10 coefficients')
+    print(result_summary.sort_values('coef_abs', ascending=False).head(10).drop(columns=['coef_abs']).to_latex())
